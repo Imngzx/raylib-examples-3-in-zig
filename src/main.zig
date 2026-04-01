@@ -1,71 +1,81 @@
-const std = @import("std");
-const Io = std.Io;
+// /*******************************************************************************************
+// *
+// *   raylib [core] example - input keys
+// *
+// *   Example complexity rating: [★☆☆☆] 1/4
+// *
+// *   Example originally created with raylib 1.0, last time updated with raylib 1.0
+// *
+// *   Example licensed under an unmodified zlib/libpng license, which is an OSI-certified,
+// *   BSD-like license that allows static linking with closed source software
+// *
+// *   Copyright (c) 2014-2025 Ramon Santamaria (@raysan5)
+// *
+// ********************************************************************************************/
 
-const input_keys = @import("input_keys");
+const c = @cImport({
+    @cInclude("raylib.h");
+    @cInclude("raymath.h");
+});
 
-pub fn main(init: std.process.Init) !void {
-    // Prints to stderr, unbuffered, ignoring potential errors.
-    std.debug.print("All your {s} are belong to us.\n", .{"codebase"});
+pub fn main() void {
+    //value declaration
+    const screenWidth = 800;
+    const screenHeight = 450;
+    const FPS: i32 = 60;
 
-    // This is appropriate for anything that lives as long as the process.
-    const arena: std.mem.Allocator = init.arena.allocator();
+    const radius: f32 = 50.0;
+    const speed: f32 = 4.0;
 
-    // Accessing command line arguments:
-    const args = try init.minimal.args.toSlice(arena);
-    for (args) |arg| {
-        std.log.info("arg: {s}", .{arg});
-    }
+    c.InitWindow(screenWidth, screenHeight, "raylib [core] example - input keys");
 
-    // In order to do I/O operations need an `Io` instance.
-    const io = init.io;
+    defer c.CloseWindow();
 
-    // Stdout is for the actual output of your application, for example if you
-    // are implementing gzip, then only the compressed bytes should be sent to
-    // stdout, not any debugging messages.
-    var stdout_buffer: [1024]u8 = undefined;
-    var stdout_file_writer: Io.File.Writer = .init(.stdout(), io, &stdout_buffer);
-    const stdout_writer = &stdout_file_writer.interface;
-
-    try input_keys.printAnotherMessage(stdout_writer);
-
-    try stdout_writer.flush(); // Don't forget to flush!
-}
-
-test "simple test" {
-    const gpa = std.testing.allocator;
-    var list: std.ArrayList(i32) = .empty;
-    defer list.deinit(gpa); // Try commenting this out and see if zig detects the memory leak!
-    try list.append(gpa, 42);
-    try std.testing.expectEqual(@as(i32, 42), list.pop());
-}
-
-test "fuzz example" {
-    try std.testing.fuzz({}, testOne, .{});
-}
-
-fn testOne(context: void, smith: *std.testing.Smith) !void {
-    _ = context;
-    // Try passing `--fuzz` to `zig build test` and see if it manages to fail this test case!
-
-    const gpa = std.testing.allocator;
-    var list: std.ArrayList(u8) = .empty;
-    defer list.deinit(gpa);
-    while (!smith.eos()) switch (smith.value(enum { add_data, dup_data })) {
-        .add_data => {
-            const slice = try list.addManyAsSlice(gpa, smith.value(u4));
-            smith.bytes(slice);
-        },
-        .dup_data => {
-            if (list.items.len == 0) continue;
-            if (list.items.len > std.math.maxInt(u32)) return error.SkipZigTest;
-            const len = smith.valueRangeAtMost(u32, 1, @min(32, list.items.len));
-            const off = smith.valueRangeAtMost(u32, 0, @intCast(list.items.len - len));
-            try list.appendSlice(gpa, list.items[off..][0..len]);
-            try std.testing.expectEqualSlices(
-                u8,
-                list.items[off..][0..len],
-                list.items[list.items.len - len ..],
-            );
-        },
+    var ballPosition = c.Vector2{
+        // use @as to provide explicit result type
+        .x = @as(f32, @floatFromInt(screenWidth)) / 2.0,
+        .y = @as(f32, @floatFromInt(screenHeight)) / 2.0,
     };
+
+    c.SetTargetFPS(FPS);
+
+    while (!c.WindowShouldClose()) {
+        if (c.IsKeyDown(c.KEY_RIGHT) or c.IsKeyDown(c.KEY_D)) ballPosition.x += speed;
+        if (c.IsKeyDown(c.KEY_LEFT) or c.IsKeyDown(c.KEY_A)) ballPosition.x -= speed;
+        if (c.IsKeyDown(c.KEY_UP) or c.IsKeyDown(c.KEY_W)) ballPosition.y -= speed;
+        if (c.IsKeyDown(c.KEY_DOWN) or c.IsKeyDown(c.KEY_S)) ballPosition.y += speed;
+
+        // left edge
+        if (ballPosition.x - radius < 0.0) {
+            ballPosition.x = radius;
+        }
+        // right edge
+        if (ballPosition.x + radius > screenWidth) {
+            ballPosition.x = screenWidth - radius;
+        }
+        // up edge
+        if (ballPosition.y - radius < 0.0) {
+            ballPosition.y = radius;
+        }
+        // down edge
+        if (ballPosition.y + radius > screenHeight) {
+            ballPosition.y = screenHeight - radius;
+        }
+
+        c.BeginDrawing();
+
+        defer c.EndDrawing();
+
+        c.ClearBackground(c.RAYWHITE);
+
+        c.DrawText("move the ball with arrow keys or wasd", 10, 10, 20, c.DARKGRAY);
+
+        c.DrawCircleV(ballPosition, 50.0, c.MAROON);
+
+        const posText = c.TextFormat("ball Position: [%.1f, %.1f]", ballPosition.x, ballPosition.y);
+
+        c.DrawText(posText, 10, 40, 20, c.RED);
+
+        c.DrawFPS(10, 70);
+    }
 }

@@ -1,4 +1,3 @@
 # raylib-examples-3-in-zig
 
-> [!WARNING]
-> project not done yet! (for now)
+Just 'zig build run' in the terminal to run this code. 
